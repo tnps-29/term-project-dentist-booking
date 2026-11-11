@@ -1,4 +1,4 @@
-# Dentist Booking System — Backend
+# Project 4: Dentist Booking System — Group "HelloWorld"
 
 REST API for the SW Dev Prac term project. Built with Node.js, Express 4, MongoDB (Mongoose 8), and JWT.
 
