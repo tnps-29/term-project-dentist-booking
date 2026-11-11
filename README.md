@@ -29,6 +29,9 @@ middleware/
 utils/
   errorResponse.js     ErrorResponse(message, statusCode)
 postman/               Postman collection + environment (import into Postman)
+scripts/
+  seed.js              npm run seed / seed:destroy
+  seed-data.js         test accounts and dentists
 ```
 
 ## Data models
@@ -106,6 +109,24 @@ router.route('/:id').put(updateBooking);              // then check ownership in
 // if (booking.user.toString() !== req.user.id && req.user.role !== 'admin') -> 403
 ```
 
+## Seed data (T17)
+
+```bash
+npm run seed           # create or refresh the test accounts and dentists (safe to re-run)
+npm run seed:destroy   # remove only the seed records (and their bookings)
+```
+
+Both commands only touch the records listed in `scripts/seed-data.js`. Anything else that A or B creates in the shared database is left alone. Re-running `seed` resets the seed accounts to the passwords below, which is handy after testing reset password.
+
+| Role | Email | Password |
+|---|---|---|
+| admin | `admin@dentist.com` | `admin123` |
+| user | `user1@example.com` | `password123` |
+| user | `user2@example.com` | `password123` |
+| user | `user3@example.com` | `password123` |
+
+There are 8 dentists. Two of them are `Orthodontics`, which is useful for testing expertise search. These are test-only credentials.
+
 ## Postman (T02)
 
 Files are in `postman/`:
@@ -124,7 +145,7 @@ Files are in `postman/`:
 **How tokens work**
 
 - The collection uses `Authorization: Bearer {{token}}` by default, so new requests inherit it. Set a request's Auth to `{{adminToken}}` for admin-only routes.
-- **Login (user)** saves the JWT to `{{token}}`. **Login (admin)** saves it to `{{adminToken}}`. That account comes from the seed script (T17).
+- **Login (user)** saves the JWT to `{{token}}`. **Login (admin)** saves it to `{{adminToken}}`. Run `npm run seed` first to create that account.
 - **Logout** clears `{{token}}`.
 - **Register** generates a unique `userEmail` each time, so the **Collection Runner** can be run repeatedly.
 
