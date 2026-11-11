@@ -69,6 +69,16 @@ Deleting a dentist with `dentist.deleteOne()` also deletes their bookings.
 
 The one-booking-per-user limit is enforced in the booking controller (T12), not in the schema, so admins aren't blocked by it. All models have `createdAt` / `updatedAt`.
 
+## API endpoints
+
+Base URL: `http://localhost:5001/api/v1`
+
+| Method | Path | Access | Ticket | Body | Response |
+|---|---|---|---|---|---|
+| POST | `/auth/register` | Public | T06 | `{ name, tel, email, password }` | `201 { success, data: { _id, name, tel, email, role, createdAt } }` |
+
+Register always creates a `user`; `role` in the body is ignored (admins come from the seed script, T17). Passwords are hashed with bcrypt before saving. A duplicate email returns `400 Email is already registered`.
+
 ## Conventions
 
 - **Base path:** `/api/v1/<resource>` (`auth`, `users`, `dentists`, `bookings`)
