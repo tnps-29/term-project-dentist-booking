@@ -31,7 +31,7 @@ const UserSchema = new mongoose.Schema(
       enum: ['user', 'admin'],
       default: 'user',
     },
-    // Used by the reset-password ticket
+    //reset password (stored as a sha256 hash + expiry)
     resetPasswordToken: { type: String, select: false },
     resetPasswordExpire: { type: Date, select: false },
   },
