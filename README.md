@@ -30,7 +30,7 @@ utils/
   errorResponse.js     ErrorResponse(message, statusCode)
 ```
 
-## Conventions (agreed between A and B)
+## Conventions
 
 - **Base path:** `/api/v1/<resource>` (`auth`, `users`, `dentists`, `bookings`)
 - **Success response:** `{ success: true, data, count? }`
