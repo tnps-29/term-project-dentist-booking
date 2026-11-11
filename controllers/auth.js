@@ -69,3 +69,26 @@ exports.login = asyncHandler(async (req, res, next) => {
 
   sendTokenResponse(user, 200, res);
 });
+
+// @desc    Log out: clear the token cookie
+// @route   GET /api/v1/auth/logout
+// @access  Public (always succeeds, even with an expired token)
+// Note: JWTs are stateless, so a Bearer token stays valid until it expires.
+//       Clients (Postman/frontend) should also discard their stored token.
+exports.logout = (req, res) => {
+  res.cookie('token', 'none', {
+    expires: new Date(Date.now() + 10 * 1000),
+    httpOnly: true,
+    sameSite: 'lax',
+  });
+
+  res.status(200).json({ success: true, data: {} });
+};
+
+// @desc    Get the currently logged-in user
+// @route   GET /api/v1/auth/me
+// @access  Private
+exports.getMe = (req, res) => {
+  // req.user is set by the protect middleware (password is never selected)
+  res.status(200).json({ success: true, data: req.user });
+};

@@ -77,10 +77,14 @@ Base URL: `http://localhost:5001/api/v1`
 |---|---|---|---|---|---|
 | POST | `/auth/register` | Public | T06 | `{ name, tel, email, password }` | `201 { success, data: { _id, name, tel, email, role, createdAt } }` |
 | POST | `/auth/login` | Public | T07 | `{ email, password }` | `200 { success, _id, name, email, role, token }` + `token` cookie |
+| GET | `/auth/logout` | Public | T08 | – | `200 { success, data: {} }`, `token` cookie cleared |
+| GET | `/auth/me` | Logged in | T10 | – | `200 { success, data: user }` (no password) |
 
 Register always creates a `user`; `role` in the body is ignored (admins come from the seed script, T17). Passwords are hashed with bcrypt before saving. A duplicate email returns `400 Email is already registered`.
 
 **Authentication (T07):** login returns a JWT in the body and also sets it as an httpOnly `token` cookie. Send it on protected routes as `Authorization: Bearer <token>`. A missing email or password returns `400`. A wrong password or unknown email returns `401 Invalid credentials`. JWT settings (`JWT_SECRET`, `JWT_EXPIRE`, `JWT_COOKIE_EXPIRE`) live in `config/config.env`.
+
+**Logout (T08)** replaces the cookie with `token=none`. JWTs are stateless, so a Bearer token stays valid until it expires. Clients such as Postman should also clear their stored token.
 
 ### Protecting routes (T09)
 
