@@ -30,6 +30,45 @@ utils/
   errorResponse.js     ErrorResponse(message, statusCode)
 ```
 
+## Data models
+
+```
+User 1 ──── 0..1 Booking 0..* ──── 1 Dentist
+```
+
+**User** (`models/User.js`)
+
+| Field | Type | Rules |
+|---|---|---|
+| `name` | String | required |
+| `tel` | String | required, 9–15 digits (`+`, `-`, spaces allowed) |
+| `email` | String | required, unique, valid email, stored lowercase |
+| `password` | String | required, min 6, **hidden by default** (`.select('+password')` to read) |
+| `role` | String | `user` \| `admin`, default `user` |
+| `resetPasswordToken`, `resetPasswordExpire` | String, Date | hidden, used by reset password (T19) |
+
+**Dentist** (`models/Dentist.js`)
+
+| Field | Type | Rules |
+|---|---|---|
+| `name` | String | required, unique, max 100 |
+| `yearsOfExperience` | Number | required, ≥ 0 |
+| `expertise` | String | required (area of expertise) |
+| `bookings` | virtual | `Dentist.findById(id).populate('bookings')` |
+
+Deleting a dentist with `dentist.deleteOne()` also deletes their bookings.
+
+**Booking** (`models/Booking.js`)
+
+| Field | Type | Rules |
+|---|---|---|
+| `date` | Date | required, date **and time** of the appointment (ISO 8601, e.g. `2026-12-01T10:00:00+07:00`) |
+| `user` | ObjectId → User | required |
+| `dentist` | ObjectId → Dentist | required |
+| `reminderSent` | Boolean | default `false`, set by the 24h reminder (T23) |
+
+The one-booking-per-user limit is enforced in the booking controller (T12), not in the schema, so admins aren't blocked by it. All models have `createdAt` / `updatedAt`.
+
 ## Conventions
 
 - **Base path:** `/api/v1/<resource>` (`auth`, `users`, `dentists`, `bookings`)
