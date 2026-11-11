@@ -1,0 +1,24 @@
+{
+  "name": "term-project-dentist-booking",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tnps-29/term-project-dentist-booking.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/tnps-29/term-project-dentist-booking/issues"
+  },
+  "homepage": "https://github.com/tnps-29/term-project-dentist-booking#readme",
+  "dependencies": {
+    "mongoose": "^8.24.8"
+  }
+}
