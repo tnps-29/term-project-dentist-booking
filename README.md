@@ -28,6 +28,7 @@ middleware/
   asyncHandler.js      async wrapper for controllers
 utils/
   errorResponse.js     ErrorResponse(message, statusCode)
+postman/               Postman collection + environment (import into Postman)
 ```
 
 ## Data models
@@ -104,6 +105,30 @@ router.use(protect);                                  // every route below needs
 router.route('/:id').put(updateBooking);              // then check ownership in the controller:
 // if (booking.user.toString() !== req.user.id && req.user.role !== 'admin') -> 403
 ```
+
+## Postman (T02)
+
+Files are in `postman/`:
+
+| File | What it is |
+|---|---|
+| `Dentist-Booking.postman_collection.json` | Requests grouped by folder (Auth so far) with test scripts |
+| `Dentist-Booking-Local.postman_environment.json` | Variables: `baseURL`, `token`, `adminToken`, `userEmail`, `userPassword`, `adminEmail`, `adminPassword` |
+
+**Setup**
+
+1. In Postman, click **Import** and drop in both files.
+2. Select the **Dentist Booking - Local** environment (top right).
+3. Start the server (`npm run dev`) and run **Auth → Register**, then **Login (user)**.
+
+**How tokens work**
+
+- The collection uses `Authorization: Bearer {{token}}` by default, so new requests inherit it. Set a request's Auth to `{{adminToken}}` for admin-only routes.
+- **Login (user)** saves the JWT to `{{token}}`. **Login (admin)** saves it to `{{adminToken}}`. That account comes from the seed script (T17).
+- **Logout** clears `{{token}}`.
+- **Register** generates a unique `userEmail` each time, so the **Collection Runner** can be run repeatedly.
+
+When adding requests, put them in a folder for the resource (`Dentists`, `Bookings`, `Users`) and add a `pm.test` for the expected status code. Export the collection back to `postman/` (Collection → ⋯ → Export, v2.1) so it stays in git.
 
 ## Conventions
 
