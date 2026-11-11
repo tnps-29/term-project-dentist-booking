@@ -2,6 +2,29 @@ const User = require('../models/User');
 const asyncHandler = require('../middleware/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
 
+// Signs a JWT, sets it as an httpOnly cookie, and returns it in the body.
+// Postman/mobile clients use the body token as "Authorization: Bearer <token>";
+const sendTokenResponse = (user, statusCode, res) => {
+  const token = user.getSignedJwtToken();
+  const days = Number(process.env.JWT_COOKIE_EXPIRE) || 30;
+
+  const options = {
+    expires: new Date(Date.now() + days * 24 * 60 * 60 * 1000),
+    httpOnly: true,
+    sameSite: 'lax',
+  };
+  if (process.env.NODE_ENV === 'production') options.secure = true;
+
+  res.status(statusCode).cookie('token', token, options).json({
+    success: true,
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    token,
+  });
+};
+
 // @desc    Register a new user
 // @route   POST /api/v1/auth/register
 // @access  Public
@@ -25,4 +48,24 @@ exports.register = asyncHandler(async (req, res, next) => {
       createdAt: user.createdAt,
     },
   });
+});
+
+// @desc    Log in with email + password, returns a JWT
+// @route   POST /api/v1/auth/login
+// @access  Public
+exports.login = asyncHandler(async (req, res, next) => {
+  const { email, password } = req.body;
+
+  if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
+    return next(new ErrorResponse('Please provide an email and password', 400));
+  }
+
+  const user = await User.findOne({ email: email.toLowerCase().trim() }).select('+password');
+
+  // Same message for unknown email and wrong password, so emails can't be probed
+  if (!user || !(await user.matchPassword(password))) {
+    return next(new ErrorResponse('Invalid credentials', 401));
+  }
+
+  sendTokenResponse(user, 200, res);
 });

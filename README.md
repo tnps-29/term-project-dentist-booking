@@ -76,8 +76,30 @@ Base URL: `http://localhost:5001/api/v1`
 | Method | Path | Access | Ticket | Body | Response |
 |---|---|---|---|---|---|
 | POST | `/auth/register` | Public | T06 | `{ name, tel, email, password }` | `201 { success, data: { _id, name, tel, email, role, createdAt } }` |
+| POST | `/auth/login` | Public | T07 | `{ email, password }` | `200 { success, _id, name, email, role, token }` + `token` cookie |
 
 Register always creates a `user`; `role` in the body is ignored (admins come from the seed script, T17). Passwords are hashed with bcrypt before saving. A duplicate email returns `400 Email is already registered`.
+
+**Authentication (T07):** login returns a JWT in the body and also sets it as an httpOnly `token` cookie. Send it on protected routes as `Authorization: Bearer <token>`. A missing email or password returns `400`. A wrong password or unknown email returns `401 Invalid credentials`. JWT settings (`JWT_SECRET`, `JWT_EXPIRE`, `JWT_COOKIE_EXPIRE`) live in `config/config.env`.
+
+### Protecting routes (T09)
+
+`middleware/auth.js` exports two middlewares:
+
+- `protect` requires a valid JWT (Bearer header or `token` cookie) and sets `req.user`, loaded fresh from the DB without the password. It returns **401** when the token is missing, invalid, or expired, or when the user no longer exists.
+- `authorize(...roles)` must come **after** `protect`. It returns **403** when `req.user.role` isn't one of `roles`.
+
+```js
+const { protect, authorize } = require('../middleware/auth');
+
+router.route('/')
+  .get(getDentists)                                   // public
+  .post(protect, authorize('admin'), createDentist);  // admin only
+
+router.use(protect);                                  // every route below needs login
+router.route('/:id').put(updateBooking);              // then check ownership in the controller:
+// if (booking.user.toString() !== req.user.id && req.user.role !== 'admin') -> 403
+```
 
 ## Conventions
 
