@@ -1,5 +1,4 @@
-// Central error handler: every error response has the shape { success: false, message }.
-// eslint-disable-next-line no-unused-vars
+// Central error handler
 const errorHandler = (err, req, res, next) => {
   let statusCode = err.statusCode || 500;
   let message = err.message || 'Server Error';
