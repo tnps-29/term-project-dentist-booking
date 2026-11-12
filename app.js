@@ -36,9 +36,9 @@ app.get('/', (req, res) => res.json({ success: true, message: 'Dentist Booking A
 
 // ---- TODO: API routes (mounted per ticket) ----
 app.use('/api/v1/auth', require('./routes/auth')); // T06-T10, T19 (A)
-// app.use('/api/v1/users', require('./routes/users'));       // T16 (B)
-// app.use('/api/v1/dentists', require('./routes/dentists')); // T11, T20, T21 (B)
-// app.use('/api/v1/bookings', require('./routes/bookings')); // T12-T15, T22 (B)
+app.use('/api/v1/users', require('./routes/users'));       // T16 (B)
+app.use('/api/v1/dentists', require('./routes/dentists')); // T11, T20, T21 (B)
+app.use('/api/v1/bookings', require('./routes/bookings')); // T12-T15, T22 (B)
 
 app.use((req, res) =>
   res.status(404).json({ success: false, message: `Not found: ${req.method} ${req.originalUrl}` })
