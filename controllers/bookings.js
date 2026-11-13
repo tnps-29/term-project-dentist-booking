@@ -1,5 +1,6 @@
 const Booking = require('../models/Booking');
 const Dentist = require('../models/Dentist');
+const writeBookingPdf = require('../utils/bookingPdf');
 
 //@desc Get all bookings
 //@route GET /api/v1/bookings
@@ -60,6 +61,43 @@ exports.getBooking = async (req, res, next) => {
     } catch (error) {
         console.log(error);
         return res.status(500).json({ success: false, message: 'Cannot find Booking' });
+    }
+};
+
+//@desc Download a booking as an appointment PDF
+//@route GET /api/v1/bookings/:id/pdf
+//@access Private (booking owner or admin)
+exports.getBookingPdf = async (req, res, next) => {
+    try {
+        const booking = await Booking.findById(req.params.id)
+            .populate({ path: 'user', select: 'name email tel' })
+            .populate({ path: 'dentist', select: 'name yearsOfExperience expertise' });
+
+        if (!booking) {
+            return res.status(404).json({ success: false, message: `No booking with the id of ${req.params.id}` });
+        }
+
+        //Make sure user is the booking owner (user may be null if the account was deleted)
+        const ownerId = booking.user ? booking.user._id.toString() : null;
+        if (ownerId !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: `User ${req.user.id} is not authorized to view this booking` });
+        }
+
+        //inline = open in the browser; ?download=true = save as a file
+        const disposition = req.query.download === 'true' ? 'attachment' : 'inline';
+        res.set({
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `${disposition}; filename="booking-${booking._id}.pdf"`,
+        });
+        writeBookingPdf(booking, res);
+    } catch (error) {
+        if (error.name === 'CastError') {
+            return res.status(400).json({ success: false, message: `Invalid booking id: ${req.params.id}` });
+        }
+        console.log(error);
+        if (!res.headersSent) {
+            return res.status(500).json({ success: false, message: 'Cannot create booking PDF' });
+        }
     }
 };
 

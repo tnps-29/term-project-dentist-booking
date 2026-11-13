@@ -1,5 +1,5 @@
 const express = require('express');
-const {getBookings,getBooking,addBooking,updateBooking,deleteBooking} = require('../controllers/bookings');
+const {getBookings,getBooking,getBookingPdf,addBooking,updateBooking,deleteBooking} = require('../controllers/bookings');
 
 //mergeParams lets this router read :dentistId from /dentists/:dentistId/bookings
 const router = express.Router({ mergeParams: true });
@@ -7,6 +7,8 @@ const router = express.Router({ mergeParams: true });
 const { protect, authorize } = require('../middleware/auth');
 
 router.route('/').get(protect, getBookings).post(protect, authorize('admin', 'user'), addBooking);
+
+router.get('/:id/pdf', protect, getBookingPdf);
 
 router.route('/:id').get(protect, getBooking).put(protect, authorize('admin', 'user'), updateBooking).delete(protect, authorize('admin', 'user'), deleteBooking);
 
