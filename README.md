@@ -33,6 +33,8 @@ middleware/
 utils/
   errorResponse.js     ErrorResponse(message, statusCode)
   sendEmail.js         sendEmail({ email, subject, message, html? }) via SMTP
+  bookingPdf.js        appointment confirmation PDF (PDFKit)
+assets/fonts/          Sarabun font (SIL OFL 1.1) embedded in PDFs for Thai text
 postman/               Postman collection + environment (import into Postman)
 scripts/
   seed.js              npm run seed / seed:destroy
@@ -91,6 +93,7 @@ Base URL: `http://localhost:5001/api/v1`
 | POST | `/auth/forgotpassword` | Public | T19 | `{ email }` | `200 { success, message }` (same for unknown emails) |
 | PUT | `/auth/resetpassword/:token` | Public | T19 | `{ password }` | `200 { success, _id, name, email, role, token }` + `token` cookie |
 | GET / POST | `/auth/resetpassword/:token` | Public | T19 | form: `password`, `confirmPassword` | HTML form opened from the email link |
+| GET | `/bookings/:id/pdf` | Owner or admin | T22 | – | `200` PDF (`application/pdf`), add `?download=true` to save as a file |
 | POST | `/reminders/run` | Admin | T23 | – | `200 { success, data: { checked, sent, failed, skipped } }` |
 
 Register always creates a `user`; `role` in the body is ignored (admins come from the seed script, T17). Passwords are hashed with bcrypt before saving. A duplicate email returns `400 Email is already registered`.
@@ -138,6 +141,15 @@ await sendEmail({ email: user.email, subject: 'Subject', message: 'Plain-text bo
 ```
 
 Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_EMAIL`, `SMTP_PASSWORD`, `FROM_NAME` and `FROM_EMAIL` in `config/config.env` (see `config.env.example`). Port 465 uses TLS. Other ports use STARTTLS. If `SMTP_HOST` is empty, nothing is sent and the email is printed to the console instead, which is enough for development. To see real emails without spamming anyone, use a sandbox inbox such as Mailtrap. `sendEmail` rejects when SMTP fails, so callers should catch the error.
+
+## Appointment PDF
+
+`GET /bookings/:id/pdf` returns a one-page A4 appointment confirmation in English. It shows the appointment date and time in Bangkok time, the patient, the dentist and the booking ID. `utils/bookingPdf.js` builds it with PDFKit.
+
+- Only the booking owner or an admin can download it. Others get `403`, no token gets `401`, an unknown booking gets `404` and a malformed id gets `400`.
+- It is sent with `Content-Disposition: inline`, so a browser should open it rather than save it. `?download=true` sends it as an attachment named `booking-<id>.pdf`.
+- Labels are English, but names and expertise may be Thai. PDFKit's built-in Helvetica has no Thai glyphs, so the PDF embeds Sarabun from `assets/fonts/` (SIL Open Font License, see `assets/fonts/OFL.txt`).
+- **Postman:** send the request, then use **Save Response > Save to a file**, or open the URL in a browser while logged in (the `token` cookie works).
 
 ## Appointment reminders
 
