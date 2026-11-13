@@ -2,7 +2,11 @@ const Dentist = require('../models/Dentist');
 //Register the Booking model so the Dentist pre('deleteOne') hook can use it
 require('../models/Booking');
 
-//@desc Get all dentists
+//Escape special regex characters so user input is searched as plain text
+//e.g. "Dr. (Som)" will not break the regex
+const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+//@desc Get all dentists (search by ?name= and ?expertise=)
 //@route GET /api/v1/dentists
 //@access Public
 exports.getDentists = async (req, res, next) => {
@@ -11,8 +15,8 @@ exports.getDentists = async (req, res, next) => {
     //Copy req.query
     const reqQuery = { ...req.query };
 
-    //Fields to exclude
-    const removeFields = ['select', 'sort', 'page', 'limit'];
+    //Fields to exclude (name and expertise are handled as regex search below)
+    const removeFields = ['select', 'sort', 'page', 'limit', 'name', 'expertise'];
 
     //Loop over remove fields and delete them from reqQuery
     removeFields.forEach(param => delete reqQuery[param]);
@@ -23,6 +27,17 @@ exports.getDentists = async (req, res, next) => {
 
     //Use the same filter for both find and count
     const filter = JSON.parse(queryStr);
+
+    //Search by name: GET /dentists?name=som  (case-insensitive, partial match)
+    if (typeof req.query.name === 'string' && req.query.name.trim()) {
+        filter.name = { $regex: escapeRegex(req.query.name.trim()), $options: 'i' };
+    }
+
+    //Search by area of expertise: GET /dentists?expertise=ortho  (case-insensitive, partial match)
+    if (typeof req.query.expertise === 'string' && req.query.expertise.trim()) {
+        filter.expertise = { $regex: escapeRegex(req.query.expertise.trim()), $options: 'i' };
+    }
+
     query = Dentist.find(filter);
 
     //Select Fields (default: name, yearsOfExperience, expertise)
