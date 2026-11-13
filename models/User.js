@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -55,10 +56,32 @@ UserSchema.methods.getSignedJwtToken = function () {
   });
 };
 
-// T07: compare a plain password with the stored hash
+// compare a plain password with the stored hash
 // (the user must be loaded with .select('+password'))
 UserSchema.methods.matchPassword = function (enteredPassword) {
   return bcrypt.compare(enteredPassword, this.password);
+};
+
+// reset tokens are stored as sha256, never as the raw token.
+const hashResetToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
+
+// create a one-time reset token valid for 10 minutes.
+// Only the hash is stored; the raw token is returned to be emailed.
+UserSchema.methods.getResetPasswordToken = function () {
+  const resetToken = crypto.randomBytes(20).toString('hex');
+  this.resetPasswordToken = hashResetToken(resetToken);
+  this.resetPasswordExpire = new Date(Date.now() + 10 * 60 * 1000);
+  return resetToken;
+};
+
+// find the user for a raw (emailed) reset token that has not expired.
+// Resolves to null for a malformed, unknown, used or expired token.
+UserSchema.statics.findByResetToken = async function (token) {
+  if (typeof token !== 'string' || !/^[a-f0-9]{40}$/.test(token)) return null;
+  return this.findOne({
+    resetPasswordToken: hashResetToken(token),
+    resetPasswordExpire: { $gt: Date.now() },
+  }).select('+resetPasswordToken +resetPasswordExpire');
 };
 
 module.exports = mongoose.model('User', UserSchema);

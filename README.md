@@ -23,6 +23,8 @@ config/
 models/                Mongoose models (User, Dentist, Booking)
 controllers/           request handlers, one file per resource
 routes/                Express routers, mounted under /api/v1
+views/
+  resetPasswordPage.js HTML form pages for the reset password email link
 middleware/
   error.js             central error handler
   asyncHandler.js      async wrapper for controllers
@@ -84,12 +86,25 @@ Base URL: `http://localhost:5001/api/v1`
 | POST | `/auth/login` | Public | T07 | `{ email, password }` | `200 { success, _id, name, email, role, token }` + `token` cookie |
 | GET | `/auth/logout` | Public | T08 | – | `200 { success, data: {} }`, `token` cookie cleared |
 | GET | `/auth/me` | Logged in | T10 | – | `200 { success, data: user }` (no password) |
+| POST | `/auth/forgotpassword` | Public | T19 | `{ email }` | `200 { success, message }` (same for unknown emails) |
+| PUT | `/auth/resetpassword/:token` | Public | T19 | `{ password }` | `200 { success, _id, name, email, role, token }` + `token` cookie |
+| GET / POST | `/auth/resetpassword/:token` | Public | T19 | form: `password`, `confirmPassword` | HTML form opened from the email link |
 
 Register always creates a `user`; `role` in the body is ignored (admins come from the seed script, T17). Passwords are hashed with bcrypt before saving. A duplicate email returns `400 Email is already registered`.
 
 **Authentication:** login returns a JWT in the body and also sets it as an httpOnly `token` cookie. Send it on protected routes as `Authorization: Bearer <token>`. A missing email or password returns `400`. A wrong password or unknown email returns `401 Invalid credentials`. JWT settings (`JWT_SECRET`, `JWT_EXPIRE`, `JWT_COOKIE_EXPIRE`) live in `config/config.env`.
 
 **Logout** replaces the cookie with `token=none`. JWTs are stateless, so a Bearer token stays valid until it expires. Clients such as Postman should also clear their stored token.
+
+**Reset password:** `POST /auth/forgotpassword` emails a reset link (via `sendEmail`, T18) and always answers `200` with the same message, so it can't reveal which emails are registered. Only a sha256 hash of the token is stored, it expires after 10 minutes, and it works once. The email (in Thai) contains a link `GET {API_URL}/api/v1/auth/resetpassword/<token>` that opens a plain HTML form (no JavaScript, because of helmet's CSP).
+
+**Testing reset password from Postman:** the token is the last part of the link in the email (40 hex characters). Postman can't read emails, so copy it by hand:
+
+1. `POST /auth/forgotpassword` with `{ "email": "<your email>" }`.
+2. Open the email and copy the token from the end of the link. Without SMTP settings, the email is printed in the server console instead.
+3. `PUT /auth/resetpassword/<token>` with `{ "password": "<new password>" }`. Success returns a JWT and logs the user in like `/auth/login`.
+
+An invalid, used or expired token returns `400 Invalid or expired reset token`. A password shorter than 6 characters returns `400`. Set `API_URL` in `config/config.env` to the public origin of the API (default `http://localhost:<PORT>`).
 
 ### Protecting routes
 
