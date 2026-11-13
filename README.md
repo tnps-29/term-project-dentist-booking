@@ -28,6 +28,7 @@ middleware/
   asyncHandler.js      async wrapper for controllers
 utils/
   errorResponse.js     ErrorResponse(message, statusCode)
+  sendEmail.js         sendEmail({ email, subject, message, html? }) via SMTP
 postman/               Postman collection + environment (import into Postman)
 scripts/
   seed.js              npm run seed / seed:destroy
@@ -86,11 +87,11 @@ Base URL: `http://localhost:5001/api/v1`
 
 Register always creates a `user`; `role` in the body is ignored (admins come from the seed script, T17). Passwords are hashed with bcrypt before saving. A duplicate email returns `400 Email is already registered`.
 
-**Authentication (T07):** login returns a JWT in the body and also sets it as an httpOnly `token` cookie. Send it on protected routes as `Authorization: Bearer <token>`. A missing email or password returns `400`. A wrong password or unknown email returns `401 Invalid credentials`. JWT settings (`JWT_SECRET`, `JWT_EXPIRE`, `JWT_COOKIE_EXPIRE`) live in `config/config.env`.
+**Authentication:** login returns a JWT in the body and also sets it as an httpOnly `token` cookie. Send it on protected routes as `Authorization: Bearer <token>`. A missing email or password returns `400`. A wrong password or unknown email returns `401 Invalid credentials`. JWT settings (`JWT_SECRET`, `JWT_EXPIRE`, `JWT_COOKIE_EXPIRE`) live in `config/config.env`.
 
-**Logout (T08)** replaces the cookie with `token=none`. JWTs are stateless, so a Bearer token stays valid until it expires. Clients such as Postman should also clear their stored token.
+**Logout** replaces the cookie with `token=none`. JWTs are stateless, so a Bearer token stays valid until it expires. Clients such as Postman should also clear their stored token.
 
-### Protecting routes (T09)
+### Protecting routes
 
 `middleware/auth.js` exports two middlewares:
 
@@ -109,7 +110,18 @@ router.route('/:id').put(updateBooking);              // then check ownership in
 // if (booking.user.toString() !== req.user.id && req.user.role !== 'admin') -> 403
 ```
 
-## Seed data (T17)
+## Email
+
+`utils/sendEmail.js` is shared by reset password (T19) and appointment reminders (T23):
+
+```js
+const sendEmail = require('../utils/sendEmail');
+await sendEmail({ email: user.email, subject: 'Subject', message: 'Plain-text body' });
+```
+
+Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_EMAIL`, `SMTP_PASSWORD`, `FROM_NAME` and `FROM_EMAIL` in `config/config.env` (see `config.env.example`). Port 465 uses TLS. Other ports use STARTTLS. If `SMTP_HOST` is empty, nothing is sent and the email is printed to the console instead, which is enough for development. To see real emails without spamming anyone, use a sandbox inbox such as Mailtrap. `sendEmail` rejects when SMTP fails, so callers should catch the error.
+
+## Seed data
 
 ```bash
 npm run seed           # create or refresh the test accounts and dentists (safe to re-run)
