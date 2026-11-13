@@ -3,6 +3,7 @@ require('dotenv').config({ path: path.join(__dirname, 'config', 'config.env'), q
 
 const connectDB = require('./config/db');
 const app = require('./app');
+const { startReminderJob } = require('./jobs/reminder');
 
 const PORT = process.env.PORT || 5001;
 
@@ -11,6 +12,8 @@ const start = async () => {
   const server = app.listen(PORT, () =>
     console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`)
   );
+
+  startReminderJob();
 
   process.on('unhandledRejection', (err) => {
     console.error(`Unhandled rejection: ${err.message}`);

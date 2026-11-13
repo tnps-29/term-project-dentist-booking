@@ -28,4 +28,16 @@ BookingSchema.index({ user: 1 });
 BookingSchema.index({ dentist: 1, date: 1 });
 BookingSchema.index({ reminderSent: 1, date: 1 });
 
+// A new appointment time needs a new reminder: reset reminderSent whenever the
+// date changes, whichever way the booking is updated.
+BookingSchema.pre('save', function () {
+  if (!this.isNew && this.isModified('date')) this.reminderSent = false;
+});
+
+BookingSchema.pre(['findOneAndUpdate', 'updateOne', 'updateMany'], function () {
+  const update = this.getUpdate() || {};
+  const dateChanged = update.date !== undefined || (update.$set && update.$set.date !== undefined);
+  if (dateChanged) this.set({ reminderSent: false });
+});
+
 module.exports = mongoose.model('Booking', BookingSchema);
