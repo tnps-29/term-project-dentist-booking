@@ -1,0 +1,834 @@
+{
+  "info": {
+    "_postman_id": "9fc56686-cf14-4182-a050-c1d56af015d4",
+    "name": "Dentist Booking API",
+    "description": "Term project: Dentist Booking System (group HelloWorld).\n\nSelect the **Dentist Booking - Local** environment. Run **Auth → Register** then **Login (user)**; the login test script saves the JWT to `{{token}}`, and every request inherits `Authorization: Bearer {{token}}` from the collection. Admin requests use `{{adminToken}}` (run **Login (admin)** after the seed data from T17 exists).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "49392220",
+    "_collection_link": "https://go.postman.co/collection/49392220-9fc56686-cf14-4182-a050-c1d56af015d4?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Unique email per run so the Collection Runner can be repeated",
+                  "const email = \"user\" + Date.now() + \"@example.com\";",
+                  "pm.environment.set(\"userEmail\", email);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Role is user\", () => pm.expect(json.data.role).to.eql(\"user\"));",
+                  "pm.test(\"Password is not returned\", () => pm.expect(json.data).to.not.have.property(\"password\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"tel\": \"0812345678\",\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/auth/register",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Creates a user with a unique email each run and stores it in {{userEmail}} for Login (user)."
+          },
+          "response": []
+        },
+        {
+          "name": "Login (user)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Response has a token\", () => pm.expect(json.token).to.be.a(\"string\").and.not.empty);",
+                  "if (json.token) {",
+                  "  pm.environment.set(\"token\", json.token);",
+                  "  console.log(\"Saved token for\", json.email, \"(role:\", json.role + \")\");",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/auth/login",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));\nconst json = pm.response.json();\npm.test(\"Response has a token\", () => pm.expect(json.token).to.be.a(\"string\").and.not.empty);\nif (json.token) {\n  pm.environment.set(\"adminToken\", json.token);\n  console.log(\"Saved adminToken for\", json.email, \"(role:\", json.role + \")\");\n}\npm.test(\"Role is admin\", () => pm.expect(pm.response.json().role).to.eql(\"admin\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/auth/login",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Needs the admin account from the seed script (T17)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get current user (me)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Returns the logged-in user\", () => pm.expect(pm.response.json().data.email).to.eql(pm.environment.get(\"userEmail\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseURL}}/auth/me",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "// JWTs are stateless: forget the token on the client side too",
+                  "pm.environment.set(\"token\", \"\");",
+                  "console.log(\"Cleared token\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseURL}}/auth/logout",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get current user after logout (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseURL}}/auth/me",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "T06–T10 (A)"
+    },
+    {
+      "name": "Dentist",
+      "item": [
+        {
+          "name": "Get All Dentists",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {\n    pm.response.to.have.status(200);\n});\n\nconst response = pm.response.json();\n\nconsole.log(response);\n\npm.test(\"There are some hospitals!!\", () => {\n    pm.expect(response.count).to.be.above(0);\n});\n\npm.execution.setNextRequest(\"Create New Hospital\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseURL}}/dentists",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "dentists"
+              ]
+            },
+            "description": "Fetch all hospitals from database."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Single Dentist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {\n    pm.response.to.have.status(200);\n});\n\npm.execution.setNextRequest(\"Update Single Hospital\");"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/dentists/6af59e640caf8c488939dad0",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "dentists",
+                "6af59e640caf8c488939dad0"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create New Dentist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {\n    pm.response.to.have.status(201);\n});\n\nconst response = pm.response.json();\nconst new_hospital_id = response.data.id;\n\npm.globals.set(\"global_hospital_ID\", new_hospital_id);\n\npm.execution.setNextRequest(\"Get Single Hospital\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": "JSON Type"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dr. Somchai Jaidee\",\n  \"yearsOfExperience\": 12,\n  \"expertise\": \"Orthodontics\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/dentists/",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "dentists",
+                ""
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Single Dentist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {\n    pm.response.to.have.status(200);\n});\n\npm.execution.setNextRequest(\"Delete Single Hospital\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": "JSON Type"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\":\"World Medical\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/dentists/6af5ab893ae24b4f53ccb3a0",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "dentists",
+                "6af5ab893ae24b4f53ccb3a0"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Single Dentist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {\n    pm.response.to.have.status(200);\n});\n\npm.execution.setNextRequest(null);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseURL}}/dentists/6af5ab893ae24b4f53ccb3a0",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "dentists",
+                "6af5ab893ae24b4f53ccb3a0"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Dentists  Name",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {\n    pm.response.to.have.status(200);\n});\n\nconst response = pm.response.json();\n\nconsole.log(response);\n\npm.test(\"There are some hospitals!!\", () => {\n    pm.expect(response.count).to.be.above(0);\n});\n\npm.execution.setNextRequest(\"Create New Hospital\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseURL}}/dentists?name=som",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "dentists"
+              ],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "som"
+                }
+              ]
+            },
+            "description": "Fetch all hospitals from database."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Dentists  Expertise",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {\n    pm.response.to.have.status(200);\n});\n\nconst response = pm.response.json();\n\nconsole.log(response);\n\npm.test(\"There are some hospitals!!\", () => {\n    pm.expect(response.count).to.be.above(0);\n});\n\npm.execution.setNextRequest(\"Create New Hospital\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseURL}}/dentists?expertise=ortho",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "dentists"
+              ],
+              "query": [
+                {
+                  "key": "expertise",
+                  "value": "ortho"
+                }
+              ]
+            },
+            "description": "Fetch all hospitals from database."
+          },
+          "response": []
+        }
+      ],
+      "description": "Hospital CRUD functionality"
+    },
+    {
+      "name": "Booking",
+      "item": [
+        {
+          "name": "Get All Bookings",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseURL}}/bookings",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "bookings"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Booking for Dentist",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseURL}}/dentists/6af5b166e9b83494c8185124/bookings/",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "dentists",
+                "6af5b166e9b83494c8185124",
+                "bookings",
+                ""
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get ONE Booking",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseURL}}/bookings/6af5b166e9b83494c8185124",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "bookings",
+                "6af5b166e9b83494c8185124"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Booking",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": "JSON Type"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-11-20T10:00:00.000Z\",\n  \"dentist\": \"6af595d105d63689e3ad6e37\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/dentists/6af595d105d63689e3ad6e37/bookings/",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "dentists",
+                "6af595d105d63689e3ad6e37",
+                "bookings",
+                ""
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Booking",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": "JSON Type"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-10-20T10:00:00.000Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/bookings/6af5b8de42ec947c6b227bf2",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "bookings",
+                "6af5b8de42ec947c6b227bf2"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Booking",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"apptDate\": \"2021-10-15T17:00:00.000Z\",\n    \"user\": \"6ac20f9aae5014c34c5e1578\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/bookings/6af5b8de42ec947c6b227bf2",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "bookings",
+                "6af5b8de42ec947c6b227bf2"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "User",
+      "item": [
+        {
+          "name": "Get All Users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {\n    pm.response.to.have.status(200);\n});\n\nconst response = pm.response.json();\n\nconsole.log(response);\n\npm.test(\"There are some hospitals!!\", () => {\n    pm.expect(response.count).to.be.above(0);\n});\n\npm.execution.setNextRequest(\"Create New Hospital\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseURL}}/users/",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "users",
+                ""
+              ]
+            },
+            "description": "Fetch all hospitals from database."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  }
+}
