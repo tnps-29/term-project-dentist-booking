@@ -23,6 +23,8 @@ config/
 models/                Mongoose models (User, Dentist, Booking)
 controllers/           request handlers, one file per resource
 routes/                Express routers, mounted under /api/v1
+jobs/
+  reminder.js          appointment reminder job (cron + sendDueReminders)
 views/
   resetPasswordPage.js HTML form pages for the reset password email link
 middleware/
@@ -89,6 +91,7 @@ Base URL: `http://localhost:5001/api/v1`
 | POST | `/auth/forgotpassword` | Public | T19 | `{ email }` | `200 { success, message }` (same for unknown emails) |
 | PUT | `/auth/resetpassword/:token` | Public | T19 | `{ password }` | `200 { success, _id, name, email, role, token }` + `token` cookie |
 | GET / POST | `/auth/resetpassword/:token` | Public | T19 | form: `password`, `confirmPassword` | HTML form opened from the email link |
+| POST | `/reminders/run` | Admin | T23 | – | `200 { success, data: { checked, sent, failed, skipped } }` |
 
 Register always creates a `user`; `role` in the body is ignored (admins come from the seed script, T17). Passwords are hashed with bcrypt before saving. A duplicate email returns `400 Email is already registered`.
 
@@ -135,6 +138,17 @@ await sendEmail({ email: user.email, subject: 'Subject', message: 'Plain-text bo
 ```
 
 Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_EMAIL`, `SMTP_PASSWORD`, `FROM_NAME` and `FROM_EMAIL` in `config/config.env` (see `config.env.example`). Port 465 uses TLS. Other ports use STARTTLS. If `SMTP_HOST` is empty, nothing is sent and the email is printed to the console instead, which is enough for development. To see real emails without spamming anyone, use a sandbox inbox such as Mailtrap. `sendEmail` rejects when SMTP fails, so callers should catch the error.
+
+## Appointment reminders
+
+`jobs/reminder.js` emails each user (in Thai) when their booking is less than 24 hours away. It includes the dentist and the date and time in Bangkok time.
+
+- **Cron:** `server.js` runs the job every 10 minutes. Change the schedule with `REMINDER_CRON` (cron syntax), or set it to `off` to disable it. The cron only starts when `SMTP_HOST` is set. Without SMTP, a local server would mark bookings in the shared database as reminded while only printing the emails to its console.
+- **No duplicates:** `Booking.reminderSent` marks a booking as reminded. Each booking is claimed atomically before its email goes out, so two runs at once (the cron plus a manual run, or two servers on the shared database) never send the same reminder twice. If sending fails, the flag goes back to `false` and the next run retries.
+- **Rescheduling:** a hook in `models/Booking.js` resets `reminderSent` to `false` whenever `date` changes, through `PUT /bookings/:id` or any other update, so the new time gets its own reminder.
+- **Manual run:** `POST /reminders/run` (admin) runs the same job right away and returns counts. `skipped` counts bookings whose user or dentist no longer exists. It works without SMTP too, in which case the emails are printed to the console.
+
+**Testing from Postman:** log in as admin and create a booking for less than 24 hours from now. Call `POST /reminders/run` and expect `sent: 1`. Call it again and expect `sent: 0`.
 
 ## Seed data
 
