@@ -56,7 +56,7 @@ User 1 ──── 0..1 Booking 0..* ──── 1 Dentist
 | `email` | String | required, unique, valid email, stored lowercase |
 | `password` | String | required, min 6, **hidden by default** (`.select('+password')` to read) |
 | `role` | String | `user` \| `admin`, default `user` |
-| `resetPasswordToken`, `resetPasswordExpire` | String, Date | hidden, used by reset password (T19) |
+| `resetPasswordToken`, `resetPasswordExpire` | String, Date | hidden, used by reset password|
 
 **Dentist** (`models/Dentist.js`)
 
@@ -76,7 +76,7 @@ Deleting a dentist with `dentist.deleteOne()` also deletes their bookings.
 | `date` | Date | required, date **and time** of the appointment (ISO 8601, e.g. `2026-12-01T10:00:00+07:00`) |
 | `user` | ObjectId → User | required |
 | `dentist` | ObjectId → Dentist | required |
-| `reminderSent` | Boolean | default `false`, set by the 24h reminder (T23) |
+| `reminderSent` | Boolean | default `false`, set when the reminder email is sent|
 
 The one-booking-per-user limit is enforced in the booking controller (T12), not in the schema, so admins aren't blocked by it. All models have `createdAt` / `updatedAt`.
 
@@ -84,25 +84,25 @@ The one-booking-per-user limit is enforced in the booking controller (T12), not 
 
 Base URL: `http://localhost:5001/api/v1`
 
-| Method | Path | Access | Ticket | Body | Response |
+| Method | Path | Access | Body | Response |
 |---|---|---|---|---|---|
-| POST | `/auth/register` | Public | T06 | `{ name, tel, email, password }` | `201 { success, data: { _id, name, tel, email, role, createdAt } }` |
-| POST | `/auth/login` | Public | T07 | `{ email, password }` | `200 { success, _id, name, email, role, token }` + `token` cookie |
-| GET | `/auth/logout` | Public | T08 | – | `200 { success, data: {} }`, `token` cookie cleared |
-| GET | `/auth/me` | Logged in | T10 | – | `200 { success, data: user }` (no password) |
-| POST | `/auth/forgotpassword` | Public | T19 | `{ email }` | `200 { success, message }` (same for unknown emails) |
-| PUT | `/auth/resetpassword/:token` | Public | T19 | `{ password }` | `200 { success, _id, name, email, role, token }` + `token` cookie |
-| GET / POST | `/auth/resetpassword/:token` | Public | T19 | form: `password`, `confirmPassword` | HTML form opened from the email link |
-| GET | `/bookings/:id/pdf` | Owner or admin | T22 | – | `200` PDF (`application/pdf`), add `?download=true` to save as a file |
-| POST | `/reminders/run` | Admin | T23 | – | `200 { success, data: { checked, sent, failed, skipped } }` |
+| POST | `/auth/register` | Public | `{ name, tel, email, password }` | `201 { success, data: { _id, name, tel, email, role, createdAt } }` |
+| POST | `/auth/login` | Public | `{ email, password }` | `200 { success, _id, name, email, role, token }` + `token` cookie |
+| GET | `/auth/logout` | Public | – | `200 { success, data: {} }`, `token` cookie cleared |
+| GET | `/auth/me` | Logged in | – | `200 { success, data: user }` (no password) |
+| POST | `/auth/forgotpassword` | Public | `{ email }` | `200 { success, message }` (same for unknown emails) |
+| PUT | `/auth/resetpassword/:token` | Public | `{ password }` | `200 { success, _id, name, email, role, token }` + `token` cookie |
+| GET / POST | `/auth/resetpassword/:token` | Public | form: `password`, `confirmPassword` | HTML form opened from the email link |
+| GET | `/bookings/:id/pdf` | Owner or admin | – | `200` PDF (`application/pdf`), add `?download=true` to save as a file |
+| POST | `/reminders/run` | Admin | – | `200 { success, data: { checked, sent, failed, skipped } }` |
 
-Register always creates a `user`; `role` in the body is ignored (admins come from the seed script, T17). Passwords are hashed with bcrypt before saving. A duplicate email returns `400 Email is already registered`.
+Register always creates a `user`; `role` in the body is ignored (admins come from the seed script). Passwords are hashed with bcrypt before saving. A duplicate email returns `400 Email is already registered`.
 
 **Authentication:** login returns a JWT in the body and also sets it as an httpOnly `token` cookie. Send it on protected routes as `Authorization: Bearer <token>`. A missing email or password returns `400`. A wrong password or unknown email returns `401 Invalid credentials`. JWT settings (`JWT_SECRET`, `JWT_EXPIRE`, `JWT_COOKIE_EXPIRE`) live in `config/config.env`.
 
 **Logout** replaces the cookie with `token=none`. JWTs are stateless, so a Bearer token stays valid until it expires. Clients such as Postman should also clear their stored token.
 
-**Reset password:** `POST /auth/forgotpassword` emails a reset link (via `sendEmail`, T18) and always answers `200` with the same message, so it can't reveal which emails are registered. Only a sha256 hash of the token is stored, it expires after 10 minutes, and it works once. The email (in Thai) contains a link `GET {API_URL}/api/v1/auth/resetpassword/<token>` that opens a plain HTML form (no JavaScript, because of helmet's CSP).
+**Reset password:** `POST /auth/forgotpassword` emails a reset link (via `sendEmail`) and always answers `200` with the same message, so it can't reveal which emails are registered. Only a sha256 hash of the token is stored, it expires after 10 minutes, and it works once. The email (in Thai) contains a link `GET {API_URL}/api/v1/auth/resetpassword/<token>` that opens a plain HTML form (no JavaScript, because of helmet's CSP).
 
 **Testing reset password from Postman:** the token is the last part of the link in the email (40 hex characters). Postman can't read emails, so copy it by hand:
 
@@ -133,7 +133,7 @@ router.route('/:id').put(updateBooking);              // then check ownership in
 
 ## Email
 
-`utils/sendEmail.js` is shared by reset password (T19) and appointment reminders (T23):
+`utils/sendEmail.js` is shared by reset password and appointment reminders:
 
 ```js
 const sendEmail = require('../utils/sendEmail');
@@ -153,14 +153,16 @@ Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_EMAIL`, `SMTP_PASSWORD`, `FROM_NAME` and `FR
 
 ## Appointment reminders
 
-`jobs/reminder.js` emails each user (in Thai) when their booking is less than 24 hours away. It includes the dentist and the date and time in Bangkok time.
+`jobs/reminder.js` emails each user (in Thai) about their upcoming booking. The email includes the dentist and the date and time in Bangkok time.
 
-- **Cron:** `server.js` runs the job every 10 minutes. Change the schedule with `REMINDER_CRON` (cron syntax), or set it to `off` to disable it. The cron only starts when `SMTP_HOST` is set. Without SMTP, a local server would mark bookings in the shared database as reminded while only printing the emails to its console.
+- **Cron:** started by `server.js`. `REMINDER_CRON` in `config.env` overrides the schedule (cron syntax, 6 fields for seconds), or set it to `off` to disable it. The cron only starts when `SMTP_HOST` is set. Without SMTP, a local server would mark bookings in the shared database as reminded while only printing the emails to its console.
 - **No duplicates:** `Booking.reminderSent` marks a booking as reminded. Each booking is claimed atomically before its email goes out, so two runs at once (the cron plus a manual run, or two servers on the shared database) never send the same reminder twice. If sending fails, the flag goes back to `false` and the next run retries.
 - **Rescheduling:** a hook in `models/Booking.js` resets `reminderSent` to `false` whenever `date` changes, through `PUT /bookings/:id` or any other update, so the new time gets its own reminder.
 - **Manual run:** `POST /reminders/run` (admin) runs the same job right away and returns counts. `skipped` counts bookings whose user or dentist no longer exists. It works without SMTP too, in which case the emails are printed to the console.
 
-**Testing from Postman:** log in as admin and create a booking for less than 24 hours from now. Call `POST /reminders/run` and expect `sent: 1`. Call it again and expect `sent: 0`.
+> **Shared database warning:** in demo mode the first run reminds *every* future booking in the database, including B's and the `@example.com` test users (Gmail sends those back as bounces). The bookings it reminds are marked `reminderSent`, so they won't get a 24-hour reminder later. Keep `REMINDER_CRON=off` on machines that aren't doing the email demo.
+
+**Testing from Postman:** create a booking. With the cron running, the email arrives within about 10 seconds. Without the cron, call `POST /reminders/run` as admin and expect `sent: 1`, then call it again and expect `sent: 0`.
 
 ## Seed data
 
@@ -169,40 +171,62 @@ npm run seed           # create or refresh the test accounts and dentists (safe 
 npm run seed:destroy   # remove only the seed records (and their bookings)
 ```
 
-Both commands only touch the records listed in `scripts/seed-data.js`. Anything else that A or B creates in the shared database is left alone. Re-running `seed` resets the seed accounts to the passwords below, which is handy after testing reset password.
-
-| Role | Email | Password |
-|---|---|---|
-| admin | `admin@dentist.com` | `admin123` |
-| user | `user1@example.com` | `password123` |
-| user | `user2@example.com` | `password123` |
-| user | `user3@example.com` | `password123` |
-
-There are 8 dentists. Two of them are `Orthodontics`, which is useful for testing expertise search. These are test-only credentials.
-
-## Postman (T02)
+## Postman
 
 Files are in `postman/`:
 
 | File | What it is |
 |---|---|
-| `Dentist-Booking.postman_collection.json` | Requests grouped by folder (Auth so far) with test scripts |
+| `Dentist Booking API.postman_collection.json` | Presentation Demo and Extra Credits Demo folders with test scripts |
 | `Dentist-Booking-Local.postman_environment.json` | Variables: `baseURL`, `token`, `adminToken`, `userEmail`, `userPassword`, `adminEmail`, `adminPassword` |
 
 **Setup**
 
-1. In Postman, click **Import** and drop in both files.
-2. Select the **Dentist Booking - Local** environment (top right).
-3. Start the server (`npm run dev`) and run **Auth → Register**, then **Login (user)**.
+1. Run `npm run seed` to create the admin account (`admin@dentist.com`).
+2. In Postman, click **Import** and drop in both files.
+3. Select the **Dentist Booking - Local** environment (top right).
+4. Start the server with `npm run dev`.
 
-**How tokens work**
+The collection has two folders. Run either one on its own: select it and click **Run**, keeping the order. Both are repeatable because every run registers new users.
 
-- The collection uses `Authorization: Bearer {{token}}` by default, so new requests inherit it. Set a request's Auth to `{{adminToken}}` for admin-only routes.
-- **Login (user)** saves the JWT to `{{token}}`. **Login (admin)** saves it to `{{adminToken}}`. Run `npm run seed` first to create that account.
-- **Logout** clears `{{token}}`.
-- **Register** generates a unique `userEmail` each time, so the **Collection Runner** can be run repeatedly.
+To send requests one at a time instead, go top to bottom. Booking dates are filled in by the collection's pre-request script, so any request has a valid future date. Ids and tokens still come from earlier requests: log in before booking, and create a booking (4.1, 6.1) before the requests that use it. Sent alone, "4.2 Second booking" is the user's first booking and returns 201.
 
-When adding requests, put them in a folder for the resource (`Dentists`, `Bookings`, `Users`) and add a `pm.test` for the expected status code. Export the collection back to `postman/` (Collection → ⋯ → Export, v2.1) so it stays in git.
+**Presentation Demo** (live demo, all automated)
+
+| Step | Requests |
+|---|---|
+| 0. Setup | another user registers and books, so the user can be shown that they can't touch other people's bookings, and the admin has a booking to manage |
+| 1. User Registration + Validation Check | register 201; duplicate email, missing fields, invalid email, invalid telephone and short password give 400; `role: admin` is ignored |
+| 2. User Log-in | log in 200 (token + httpOnly cookie), wrong password 401, missing password 400, `/me` |
+| 3. User View Product | all dentists, one dentist, unknown dentist 404; `select` + `sort`, `page` + `limit`, `yearsOfExperience[gte]=10` |
+| 4. User Create Booking | create 201. **Check Create Condition:** second booking 400, not logged in 401, unknown dentist 404, missing date 400, invalid date format 400 |
+| 5. User View Own Booking | sees only their own booking; another user's booking 403 |
+| 6. User Edit Own Booking | edit 200 (`reminderSent` reset); another user's booking 403 |
+| 7. User Delete Own Booking | another user's booking 403, delete own 200, then 404 |
+| 8. User Log-out | log out, `/me` afterwards 401 |
+| 9. Admin Log-in | admin logs in |
+| 10. Admin View Any Booking | all bookings, one booking, bookings of one dentist |
+| 11. Admin Edit Any Booking | edits the other user's booking |
+| 12. Admin Delete Any Booking | deletes it, then 404; cascade: admin adds a dentist, another user books it, admin deletes the dentist, the booking is gone (404) |
+
+**Extra Credits Demo** (extra credit features)
+
+| Step | Requests |
+|---|---|
+| 0. Setup | admin logs in; registers a patient and another user; real_user1 (from `npm run seed`) logs in |
+| 1. Admin views all users | admin 200 without passwords, normal user 403, not logged in 401 |
+| 2. Reset password via emailed link | forgot password (generic 200 for any email, missing email 400), wrong token 400, wrong link page 400, reset with the emailed token, same token again 400 |
+| 3. Search dentists by expertise | `?expertise=ortho`, `?expertise=SURGERY`, no match |
+| 4. Reminder email | real_user1 books; the cron emails it within about 10 seconds, or admin runs the job now (401, 403, admin 200); the booking is then marked `reminderSent` |
+| 5. Search dentists by name | `?name=dentist_1`, `?name=DENT`, no match, `.*` treated as text |
+| 6. Admin issues the appointment PDF | patient books; admin PDF inline and `?download=true`; owner 200, another user 403, not logged in 401, not found 404; booking deleted |
+
+Two steps stay manual (set in the collection's **Variables** tab):
+
+1. `runReminders`: `true` runs 4.4 and 4.5. Step 4.4 runs the job immediately and emails *every* booking it finds due, including other people's on the shared database.
+2. Open the reset link in a browser to reset with the form, or copy the 40-character token from the end of the link into `resetToken` and run the folder again. Step 2.6 resets the password to `newPassword` and updates `realUserPassword`. While `resetToken` is set, step 2.1 is skipped so it doesn't send a new email that would replace the token.
+
+The Presentation Demo uses `@example.com` users only. If the server's reminder cron is running, their bookings are still emailed and bounce.
 
 ## Conventions
 

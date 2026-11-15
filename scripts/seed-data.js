@@ -3,7 +3,7 @@
 
 const users = [
   { name: 'Admin', tel: '0800000000', email: 'admin@dentist.com', password: 'admin123', role: 'admin' },
-  { name: 'user_1', tel: '0811111111', email: 'user1@example.com', password: 'password123', role: 'user' },
+  { name: 'user1', tel: '0811111111', email: '6772046621@student.chula.ac.th', password: 'password123', role: 'user' },
   { name: 'user_2', tel: '0822222222', email: 'user2@example.com', password: 'password123', role: 'user' },
   { name: 'user_3', tel: '0833333333', email: 'user3@example.com', password: 'password123', role: 'user' },
 ];

@@ -1,11 +1,28 @@
-// Appointment reminder: email users whose booking is within the next 24 hours.
+// Appointment reminder: email users about their upcoming booking.
 // Runs from a cron in server.js and from POST /api/v1/reminders/run (admin).
 const cron = require('node-cron');
 const Booking = require('../models/Booking');
 const sendEmail = require('../utils/sendEmail');
 
-const REMIND_BEFORE_MS = 24 * 60 * 60 * 1000;
-const DEFAULT_SCHEDULE = '*/10 * * * *'; // every 10 minutes
+// ---------------------------------------------------------------------------
+// Reminder timing
+//
+// CURRENT SETTING (demo): the cron checks every 10 seconds and reminds every
+// upcoming booking that has not been reminded yet, so the email arrives within
+// about 10 seconds after a booking is created (or its date is changed).
+//
+// To send the reminder 24 hours before the appointment instead, change the two
+// constants below to:
+//
+//   const REMIND_WINDOW_MS = 24 * 60 * 60 * 1000; // only bookings in the next 24 hours
+//   const DEFAULT_SCHEDULE = '*/10 * * * *'; // check every 10 minutes
+//
+// ---------------------------------------------------------------------------
+
+// How far ahead to look for bookings. null = no limit (any upcoming booking).
+const REMIND_WINDOW_MS = null;
+// node-cron schedule. 6 fields = with seconds: every 10 seconds.
+const DEFAULT_SCHEDULE = '*/10 * * * * *';
 
 const formatThaiDate = (date) =>
   date.toLocaleString('th-TH', {
@@ -18,15 +35,15 @@ const buildMessage = (booking) => {
   const { user, dentist } = booking;
   return (
     `สวัสดีคุณ ${user.name}\n\n` +
-    `ขอแจ้งเตือนว่าคุณมีนัดหมายทันตแพทย์ในอีกไม่ถึง 24 ชั่วโมง\n\n` +
+    `ขอแจ้งเตือนนัดหมายทันตแพทย์ของคุณ\n\n` +
     `ทันตแพทย์: ${dentist.name}${dentist.expertise ? ` (${dentist.expertise})` : ''}\n` +
     `วันและเวลา: ${formatThaiDate(booking.date)}\n\n`
   );
 };
 
 /**
- * Send reminders for bookings between now and now + 24h that have not been
- * reminded yet. Each booking is claimed atomically (reminderSent: false -> true)
+ * Send reminders for upcoming bookings (within REMIND_WINDOW_MS, if set) that
+ * have not been reminded yet. Each booking is claimed atomically (reminderSent: false -> true)
  * before its email is sent, so two runs at once (cron + manual, or two servers
  * on the shared database) never send the same reminder twice. If the email
  * fails, the claim is undone and the next run retries it.
@@ -35,10 +52,9 @@ const buildMessage = (booking) => {
  */
 const sendDueReminders = async () => {
   const now = new Date();
-  const due = await Booking.find({
-    reminderSent: false,
-    date: { $gt: now, $lte: new Date(now.getTime() + REMIND_BEFORE_MS) },
-  })
+  const date = { $gt: now };
+  if (REMIND_WINDOW_MS) date.$lte = new Date(now.getTime() + REMIND_WINDOW_MS);
+  const due = await Booking.find({ reminderSent: false, date })
     .select('_id')
     .lean();
 
@@ -63,7 +79,7 @@ const sendDueReminders = async () => {
     try {
       await sendEmail({
         email: booking.user.email,
-        subject: 'แจ้งเตือนนัดหมายทันตแพทย์ภายใน 24 ชั่วโมง',
+        subject: 'แจ้งเตือนนัดหมายทันตแพทย์',
         message: buildMessage(booking),
       });
       result.sent += 1;
